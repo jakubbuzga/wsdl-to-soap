@@ -1,0 +1,45 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+    container_name: wsdl_frontend
+    ports:
+      - "80:80" # Map host port 80 to container port 80
+    depends_on:
+      - backend
+    networks:
+      - wsdl_network
+
+  backend:
+    build:
+      context: ./backend
+    container_name: wsdl_backend
+    ports:
+      - "8000:8000" # Expose for direct API access if needed
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - LLM_MODEL=llama3 # Or any other model you have pulled
+    depends_on:
+      - ollama
+    networks:
+      - wsdl_network
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama_service
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - wsdl_network
+
+volumes:
+  ollama_data:
+
+networks:
+  wsdl_network:
+    driver: bridge
