@@ -40,11 +40,14 @@ async def create_generation(
         "wsdl_content": wsdl_content,
         "test_options": test_options,
         "feedback_history": [],
+        "generated_xml": "",
+        "generated_xmls": [],
+        "error_message": "",
+        "attempt_count": 0,
     }
 
     config = {"configurable": {"thread_id": generation_id}}
 
-    final_state = None
     try:
         # The stream method will now run the graph until it's interrupted
         for _ in graph_app.stream(initial_state, config=config):
@@ -55,13 +58,9 @@ async def create_generation(
         if final_state is None:
             raise HTTPException(status_code=500, detail="Graph execution failed to produce a state.")
 
-        # Save the final snapshot of the graph state to resume later
-        # The checkpointer already saves the state, so we don't need to store it in a dictionary.
-        # graph_sessions[generation_id] = final_state
-
         return GenerationResponse(
             generationId=generation_id,
-            xmlContent=final_state.values.get("generated_xml"),
+            xmlContents=final_state.values.get("generated_xmls"),
             errorMessage=final_state.values.get("error_message")
         )
     except Exception as e:
@@ -74,23 +73,30 @@ async def regenerate_with_feedback(
     request: FeedbackRequest
 ):
     """
-    Resumes a graph execution with new user feedback.
+    Starts a new graph execution with the provided feedback.
     """
     config = {"configurable": {"thread_id": generation_id}}
 
-    # Retrieve the last state of the graph
+    # Retrieve the last state of the graph to get original context
     current_state = graph_app.get_state(config)
 
     if current_state is None:
         raise HTTPException(status_code=404, detail="Generation ID not found.")
 
-    # Add new feedback to the history
-    current_state.values["feedback_history"].append(request.feedback)
+    # Start a new run with the updated feedback history
+    new_initial_state = {
+        "wsdl_content": current_state.values["wsdl_content"],
+        "test_options": current_state.values["test_options"],
+        "feedback_history": current_state.values["feedback_history"] + [request.feedback],
+        "generated_xml": "",
+        "generated_xmls": [],
+        "error_message": "",
+        "attempt_count": 0,
+    }
 
-    final_state = None
     try:
-        # Resume the graph from where it was interrupted
-        for _ in graph_app.stream(None, config=config, input=current_state.values):
+        # Run the graph from the beginning with the new feedback
+        for _ in graph_app.stream(new_initial_state, config=config):
             pass
 
         final_state = graph_app.get_state(config)
@@ -99,7 +105,7 @@ async def regenerate_with_feedback(
             raise HTTPException(status_code=500, detail="Graph execution failed to produce a state.")
 
         return FeedbackResponse(
-            xmlContent=final_state.values.get("generated_xml"),
+            xmlContents=final_state.values.get("generated_xmls"),
             errorMessage=final_state.values.get("error_message")
         )
     except Exception as e:

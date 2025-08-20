@@ -12,17 +12,21 @@ import {
   FormGroup,
   FormControlLabel,
   Paper,
-  Grid,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import xml from 'react-syntax-highlighter/dist/esm/languages/hljs/xml';
 import { docco } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import JSZip from 'jszip';
 
 SyntaxHighlighter.registerLanguage('xml', xml);
 
 function App() {
   const [isLoading, setIsLoading] = useState(false);
-  const [xmlContent, setXmlContent] = useState('');
+  const [xmlContents, setXmlContents] = useState<string[]>([]);
   const [generationId, setGenerationId] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -51,13 +55,13 @@ function App() {
     }
     setIsLoading(true);
     setErrorMessage('');
-    setXmlContent('');
+    setXmlContents([]);
     try {
       const response = await generateTests(selectedFile, testOptions);
       if (response.errorMessage) {
         setErrorMessage(response.errorMessage);
       } else {
-        setXmlContent(response.xmlContent || '');
+        setXmlContents(response.xmlContents || []);
         setGenerationId(response.generationId);
       }
     } catch (error: any) {
@@ -76,7 +80,7 @@ function App() {
       if (response.errorMessage) {
         setErrorMessage(response.errorMessage);
       } else {
-        setXmlContent(response.xmlContent || '');
+        setXmlContents(response.xmlContents || []);
         setFeedbackText('');
       }
     } catch (error: any) {
@@ -86,13 +90,19 @@ function App() {
     }
   };
 
-  const handleDownload = () => {
-    if (!xmlContent) return;
-    const blob = new Blob([xmlContent], { type: 'text/xml' });
-    const url = URL.createObjectURL(blob);
+  const handleDownload = async () => {
+    if (xmlContents.length === 0) return;
+
+    const zip = new JSZip();
+    xmlContents.forEach((content, index) => {
+      zip.file(`test_case_${index + 1}.xml`, content);
+    });
+
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(zipBlob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'test_cases.xml';
+    a.download = 'test_cases.zip';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -135,13 +145,29 @@ function App() {
         {isLoading && <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}><CircularProgress /></Box>}
         {errorMessage && <Alert severity="error" sx={{ my: 2 }}>{errorMessage}</Alert>}
 
-        {xmlContent && (
+        {xmlContents.length > 0 && (
           <Paper elevation={3} sx={{ p: 3 }}>
-            <Typography variant="h5" gutterBottom>Generated SOAP Tests</Typography>
-            <Button onClick={handleDownload} variant="outlined" sx={{ mb: 2 }}>Download XML</Button>
-            <SyntaxHighlighter language="xml" style={docco} customStyle={{ maxHeight: '500px', overflowY: 'auto' }}>
-              {xmlContent}
-            </SyntaxHighlighter>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h5">Generated SOAP Tests ({xmlContents.length})</Typography>
+              <Button onClick={handleDownload} variant="outlined">Download All as .zip</Button>
+            </Box>
+
+            {xmlContents.map((content, index) => (
+              <Accordion key={index}>
+                <AccordionSummary
+                  expandIcon={<ExpandMoreIcon />}
+                  aria-controls={`panel${index}-content`}
+                  id={`panel${index}-header`}
+                >
+                  <Typography>Test Case #{index + 1}</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <SyntaxHighlighter language="xml" style={docco} customStyle={{ maxHeight: '500px', overflowY: 'auto' }}>
+                    {content}
+                  </SyntaxHighlighter>
+                </AccordionDetails>
+              </Accordion>
+            ))}
 
             <Box sx={{ mt: 4 }}>
               <Typography variant="h6">3. Provide Feedback for Regeneration</Typography>
