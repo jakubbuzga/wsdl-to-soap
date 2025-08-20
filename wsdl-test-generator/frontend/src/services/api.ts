@@ -11,12 +11,12 @@ const apiClient = axios.create({
 // --- TypeScript Interfaces ---
 export interface GenerationResponse {
   generationId: string;
-  xmlContent?: string;
+  xmlContents?: string[];
   errorMessage?: string;
 }
 
 export interface FeedbackResponse {
-  xmlContent?: string;
+  xmlContents?: string[];
   errorMessage?: string;
 }
 

@@ -4,12 +4,12 @@ from typing import List, Optional
 
 class GenerationResponse(BaseModel):
     generationId: str
-    xmlContent: Optional[str] = None
+    xmlContents: Optional[List[str]] = None
     errorMessage: Optional[str] = None
 
 class FeedbackRequest(BaseModel):
     feedback: str
 
 class FeedbackResponse(BaseModel):
-    xmlContent: Optional[str] = None
+    xmlContents: Optional[List[str]] = None
     errorMessage: Optional[str] = None
