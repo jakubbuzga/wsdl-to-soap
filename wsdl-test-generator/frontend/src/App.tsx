@@ -12,21 +12,16 @@ import {
   FormGroup,
   FormControlLabel,
   Paper,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
 } from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import xml from 'react-syntax-highlighter/dist/esm/languages/hljs/xml';
 import { docco } from 'react-syntax-highlighter/dist/esm/styles/hljs';
-import JSZip from 'jszip';
 
 SyntaxHighlighter.registerLanguage('xml', xml);
 
 function App() {
   const [isLoading, setIsLoading] = useState(false);
-  const [xmlContents, setXmlContents] = useState<string[]>([]);
+  const [xmlContent, setXmlContent] = useState('');
   const [generationId, setGenerationId] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -55,13 +50,13 @@ function App() {
     }
     setIsLoading(true);
     setErrorMessage('');
-    setXmlContents([]);
+    setXmlContent('');
     try {
       const response = await generateTests(selectedFile, testOptions);
       if (response.errorMessage) {
         setErrorMessage(response.errorMessage);
       } else {
-        setXmlContents(response.xmlContents || []);
+        setXmlContent(response.xmlContent || '');
         setGenerationId(response.generationId);
       }
     } catch (error: any) {
@@ -80,7 +75,7 @@ function App() {
       if (response.errorMessage) {
         setErrorMessage(response.errorMessage);
       } else {
-        setXmlContents(response.xmlContents || []);
+        setXmlContent(response.xmlContent || '');
         setFeedbackText('');
       }
     } catch (error: any) {
@@ -90,19 +85,13 @@ function App() {
     }
   };
 
-  const handleDownload = async () => {
-    if (xmlContents.length === 0) return;
-
-    const zip = new JSZip();
-    xmlContents.forEach((content, index) => {
-      zip.file(`test_case_${index + 1}.xml`, content);
-    });
-
-    const zipBlob = await zip.generateAsync({ type: 'blob' });
-    const url = URL.createObjectURL(zipBlob);
+  const handleDownload = () => {
+    if (!xmlContent) return;
+    const blob = new Blob([xmlContent], { type: 'text/xml' });
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'test_cases.zip';
+    a.download = 'soapui-project.xml';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -125,7 +114,7 @@ function App() {
             style={{ marginTop: '10px', marginBottom: '20px' }}
           />
 
-          <Typography variant="h6">2. Select Test Case Types</Typography>
+          <Typography variant="h6">2. Select Test Suite Types</Typography>
           <FormGroup row>
             <FormControlLabel control={<Checkbox onChange={handleOptionChange} value="happy_path" />} label="Happy Path" />
             <FormControlLabel control={<Checkbox onChange={handleOptionChange} value="negative_cases" />} label="Negative Cases" />
@@ -138,36 +127,20 @@ function App() {
             disabled={isLoading || !selectedFile}
             sx={{ mt: 2 }}
           >
-            Generate Tests
+            Generate SoapUI Project
           </Button>
         </Paper>
 
         {isLoading && <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}><CircularProgress /></Box>}
         {errorMessage && <Alert severity="error" sx={{ my: 2 }}>{errorMessage}</Alert>}
 
-        {xmlContents.length > 0 && (
+        {xmlContent && (
           <Paper elevation={3} sx={{ p: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h5">Generated SOAP Tests ({xmlContents.length})</Typography>
-              <Button onClick={handleDownload} variant="outlined">Download All as .zip</Button>
-            </Box>
-
-            {xmlContents.map((content, index) => (
-              <Accordion key={index}>
-                <AccordionSummary
-                  expandIcon={<ExpandMoreIcon />}
-                  aria-controls={`panel${index}-content`}
-                  id={`panel${index}-header`}
-                >
-                  <Typography>Test Case #{index + 1}</Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                  <SyntaxHighlighter language="xml" style={docco} customStyle={{ maxHeight: '500px', overflowY: 'auto' }}>
-                    {content}
-                  </SyntaxHighlighter>
-                </AccordionDetails>
-              </Accordion>
-            ))}
+            <Typography variant="h5" gutterBottom>Generated SoapUI Project</Typography>
+            <Button onClick={handleDownload} variant="outlined" sx={{ mb: 2 }}>Download SoapUI Project</Button>
+            <SyntaxHighlighter language="xml" style={docco} customStyle={{ maxHeight: '500px', overflowY: 'auto' }}>
+              {xmlContent}
+            </SyntaxHighlighter>
 
             <Box sx={{ mt: 4 }}>
               <Typography variant="h6">3. Provide Feedback for Regeneration</Typography>
@@ -178,7 +151,7 @@ function App() {
                 variant="outlined"
                 value={feedbackText}
                 onChange={(e) => setFeedbackText(e.target.value)}
-                placeholder="e.g., 'The negative test is missing. Please add a test where 'a' is zero.'"
+                placeholder="e.g., 'The generated project is missing assertions for the login operation.'"
                 sx={{ my: 2 }}
               />
               <Button

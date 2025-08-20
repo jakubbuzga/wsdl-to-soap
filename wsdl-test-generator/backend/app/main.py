@@ -41,7 +41,6 @@ async def create_generation(
         "test_options": test_options,
         "feedback_history": [],
         "generated_xml": "",
-        "generated_xmls": [],
         "error_message": "",
         "attempt_count": 0,
     }
@@ -60,7 +59,7 @@ async def create_generation(
 
         return GenerationResponse(
             generationId=generation_id,
-            xmlContents=final_state.values.get("generated_xmls"),
+            xmlContent=final_state.values.get("generated_xml"),
             errorMessage=final_state.values.get("error_message")
         )
     except Exception as e:
@@ -89,7 +88,6 @@ async def regenerate_with_feedback(
         "test_options": current_state.values["test_options"],
         "feedback_history": current_state.values["feedback_history"] + [request.feedback],
         "generated_xml": "",
-        "generated_xmls": [],
         "error_message": "",
         "attempt_count": 0,
     }
@@ -105,7 +103,7 @@ async def regenerate_with_feedback(
             raise HTTPException(status_code=500, detail="Graph execution failed to produce a state.")
 
         return FeedbackResponse(
-            xmlContents=final_state.values.get("generated_xmls"),
+            xmlContent=final_state.values.get("generated_xml"),
             errorMessage=final_state.values.get("error_message")
         )
     except Exception as e:
