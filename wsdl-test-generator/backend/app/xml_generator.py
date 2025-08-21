@@ -43,15 +43,17 @@ def create_test_step_xml(test_case_data: Dict[str, Any], wsdl_info: WsdlInfo, te
         elif assertion_type == "XPathMatch":
             path = assertion.get("path", "")
             value = assertion.get("value", "")
-            assertions_xml.append(f"""<con:assertion type="XPath Match" id="{_generate_uuid()}">
-                <con:configuration>
-                    <path>{path}</path>
-                    <content>{value}</content>
-                    <allowWildcards>false</allowWildcards>
-                    <ignoreNamspaceDifferences>true</ignoreNamspaceDifferences>
-                    <ignoreComments>true</ignoreComments>
-                </con:configuration>
-            </con:assertion>""")
+            # Only add the assertion if there is a value to check for.
+            if path and value:
+                assertions_xml.append(f"""<con:assertion type="XPath Match" id="{_generate_uuid()}">
+                    <con:configuration>
+                        <path>{path}</path>
+                        <content>{value}</content>
+                        <allowWildcards>false</allowWildcards>
+                        <ignoreNamspaceDifferences>true</ignoreNamspaceDifferences>
+                        <ignoreComments>true</ignoreComments>
+                    </con:configuration>
+                </con:assertion>""")
 
     template = """<con:testStep type="request" name="{test_step_name}">
     <con:settings/>

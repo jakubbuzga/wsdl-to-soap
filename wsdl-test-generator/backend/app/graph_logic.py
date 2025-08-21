@@ -71,8 +71,8 @@ You are an expert API test case designer. Your task is to generate a JSON object
     - `assertions`: A list of assertion objects.
 5.  For each assertion object, provide:
     - `type`: The type of assertion. Can be "ValidStatusCode", "SOAPResponse", "SOAPFault", or "XPathMatch".
-    - `value`: The value to assert. For "ValidStatusCode", this is the status code. For "XPathMatch", this is the expected content.
-    - `path`: For "XPathMatch" assertions, the XPath expression to use.
+    - `value`: The value to assert. For "ValidStatusCode", this is the status code. For "XPathMatch" on a negative test, this should be a predicted error message (e.g., "Invalid input"). For "XPathMatch" on a happy path test, this should be a realistic expected value. **This field must not be empty for XPathMatch assertions.**
+    - `path`: For "XPathMatch" assertions, the XPath expression to use (e.g., "//faultstring").
 6.  The output MUST be a single, valid JSON object. Do not include any other text, explanations, or markdown.
 
 **JSON Output Structure Example:**
