@@ -31,15 +31,25 @@ def parse_wsdl(wsdl_content: str, file_name: str = "service.wsdl") -> WsdlInfo:
         port = list(service.ports.values())[0]
         binding = port.binding
 
-        # The 'address' attribute is not directly on the port object.
-        # We need to inspect the raw XML element to find the soap:address location.
-        soap_address = port.element.find('{http://schemas.xmlsoap.org/wsdl/soap/}address')
+        # The 'address' attribute is not directly on the port object in all cases.
+        # A more reliable way is to parse the raw WSDL content with lxml.
+        tree = etree.fromstring(wsdl_content.encode('utf-8'))
+        namespaces = {
+            'wsdl': 'http://schemas.xmlsoap.org/wsdl/',
+            'soap': 'http://schemas.xmlsoap.org/wsdl/soap/',
+            'soap12': 'http://schemas.xmlsoap.org/wsdl/soap12/',
+        }
+        # Try to find SOAP 1.1 or 1.2 address
+        soap_address = tree.find('.//wsdl:service/wsdl:port/soap:address', namespaces)
         if soap_address is None:
-            raise ValueError("Could not find soap:address in the WSDL port.")
+            soap_address = tree.find('.//wsdl:service/wsdl:port/soap12:address', namespaces)
+
+        if soap_address is None:
+            raise ValueError("Could not find soap:address or soap12:address in the WSDL port.")
         service_endpoint_url = soap_address.get("location")
 
         binding_name = binding.name
-        target_namespace = doc.target_namespace
+        target_namespace = binding.name.namespace
 
         operations = []
         for op_name, operation in binding.operations.items():
