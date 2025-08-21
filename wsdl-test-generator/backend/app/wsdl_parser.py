@@ -4,6 +4,7 @@ from typing import List, Dict, Any
 import zeep
 from zeep.wsdl import Document
 from io import BytesIO
+from lxml import etree
 
 class WsdlOperation(BaseModel):
     name: str
@@ -30,7 +31,13 @@ def parse_wsdl(wsdl_content: str, file_name: str = "service.wsdl") -> WsdlInfo:
         port = list(service.ports.values())[0]
         binding = port.binding
 
-        service_endpoint_url = port.address
+        # The 'address' attribute is not directly on the port object.
+        # We need to inspect the raw XML element to find the soap:address location.
+        soap_address = port.element.find('{http://schemas.xmlsoap.org/wsdl/soap/}address')
+        if soap_address is None:
+            raise ValueError("Could not find soap:address in the WSDL port.")
+        service_endpoint_url = soap_address.get("location")
+
         binding_name = binding.name
         target_namespace = doc.target_namespace
 
