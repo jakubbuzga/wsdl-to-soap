@@ -45,9 +45,10 @@ def create_test_step_xml(test_case_data: Dict[str, Any], wsdl_info: WsdlInfo, te
             value = assertion.get("value", "")
             # Only add the assertion if there is a value to check for.
             if path and value:
+                full_path = f"declare namespace ns1='{wsdl_info.target_namespace}'; {path}"
                 assertions_xml.append(f"""<con:assertion type="XPath Match" id="{_generate_uuid()}">
                     <con:configuration>
-                        <path>{path}</path>
+                        <path>{full_path}</path>
                         <content>{value}</content>
                         <allowWildcards>false</allowWildcards>
                         <ignoreNamspaceDifferences>true</ignoreNamspaceDifferences>
