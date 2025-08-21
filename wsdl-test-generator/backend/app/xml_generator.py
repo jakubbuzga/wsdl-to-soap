@@ -115,8 +115,8 @@ def assemble_full_project_xml(wsdl_info: WsdlInfo, test_json: Dict[str, Any], te
             <con:endpoint>{service_endpoint}</con:endpoint>
         </con:endpoints>
         {operations_xml}
-        {test_suites_xml}
     </con:interface>
+    {test_suites_xml}
     <con:properties/>
 </con:soapui-project>"""
 
