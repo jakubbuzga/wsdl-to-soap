@@ -31,12 +31,27 @@ def create_test_step_xml(test_case_data: Dict[str, Any], wsdl_info: WsdlInfo, te
     test_step_name = test_case_data["name"]
     request_payload = _build_request_payload(operation, test_case_data["payload"], wsdl_info.target_namespace)
 
-    assertions = []
-    if test_type == "happy_path":
-        assertions.append(f'<con:assertion type="Valid HTTP Status Codes" id="{_generate_uuid()}"><con:configuration><codes>200</codes></con:configuration></con:assertion>')
-        assertions.append(f'<con:assertion type="SOAP Response" id="{_generate_uuid()}"/>')
-    else:
-        assertions.append(f'<con:assertion type="SOAP Fault" id="{_generate_uuid()}"/>')
+    assertions_xml = []
+    for assertion in test_case_data.get("assertions", []):
+        assertion_type = assertion.get("type")
+        if assertion_type == "ValidStatusCode":
+            assertions_xml.append(f'<con:assertion type="Valid HTTP Status Codes" id="{_generate_uuid()}"><con:configuration><codes>{assertion.get("value", "200")}</codes></con:configuration></con:assertion>')
+        elif assertion_type == "SOAPResponse":
+            assertions_xml.append(f'<con:assertion type="SOAP Response" id="{_generate_uuid()}"/>')
+        elif assertion_type == "SOAPFault":
+            assertions_xml.append(f'<con:assertion type="SOAP Fault" id="{_generate_uuid()}"/>')
+        elif assertion_type == "XPathMatch":
+            path = assertion.get("path", "")
+            value = assertion.get("value", "")
+            assertions_xml.append(f"""<con:assertion type="XPath Match" id="{_generate_uuid()}">
+                <con:configuration>
+                    <path>{path}</path>
+                    <content>{value}</content>
+                    <allowWildcards>false</allowWildcards>
+                    <ignoreNamspaceDifferences>true</ignoreNamspaceDifferences>
+                    <ignoreComments>true</ignoreComments>
+                </con:configuration>
+            </con:assertion>""")
 
     template = """<con:testStep type="request" name="{test_step_name}">
     <con:settings/>
@@ -47,7 +62,7 @@ def create_test_step_xml(test_case_data: Dict[str, Any], wsdl_info: WsdlInfo, te
             <con:endpoint>{Service_Endpoint_URL}</con:endpoint>
             <con:request><![CDATA[{request_payload}]]></con:request>
             <con:credentials><con:selectedAuthProfile>No Authorization</con:selectedAuthProfile></con:credentials>
-            {assertions}
+            {assertions_xml}
         </con:request>
     </con:config>
 </con:testStep>"""
@@ -57,7 +72,7 @@ def create_test_step_xml(test_case_data: Dict[str, Any], wsdl_info: WsdlInfo, te
         Operation_Name=op_name,
         Service_Endpoint_URL=wsdl_info.service_endpoint_url,
         request_payload=request_payload,
-        assertions="\n".join(assertions)
+        assertions_xml="\n".join(assertions_xml)
     )
 
 def create_test_case_xml(test_case_data: Dict[str, Any], wsdl_info: WsdlInfo, test_type: str) -> str:

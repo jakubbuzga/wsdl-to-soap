@@ -68,7 +68,12 @@ You are an expert API test case designer. Your task is to generate a JSON object
     - `name`: A descriptive name for the test case (e.g., "Convert USD to EUR").
     - `operation`: The name of the WSDL operation to test.
     - `payload`: A dictionary of input values for the request body. Create realistic and relevant sample data.
-5.  The output MUST be a single, valid JSON object. Do not include any other text, explanations, or markdown.
+    - `assertions`: A list of assertion objects.
+5.  For each assertion object, provide:
+    - `type`: The type of assertion. Can be "ValidStatusCode", "SOAPResponse", "SOAPFault", or "XPathMatch".
+    - `value`: The value to assert. For "ValidStatusCode", this is the status code. For "XPathMatch", this is the expected content.
+    - `path`: For "XPathMatch" assertions, the XPath expression to use.
+6.  The output MUST be a single, valid JSON object. Do not include any other text, explanations, or markdown.
 
 **JSON Output Structure Example:**
 ```json
@@ -77,14 +82,23 @@ You are an expert API test case designer. Your task is to generate a JSON object
     {{
       "name": "Convert USD to EUR",
       "operation": "Convert",
-      "payload": {{ "source_currency": "USD", "target_currency": "EUR", "amount": 100.0 }}
+      "payload": {{ "source_currency": "USD", "target_currency": "EUR", "amount": 100.0 }},
+      "assertions": [
+        {{ "type": "ValidStatusCode", "value": "200" }},
+        {{ "type": "SOAPResponse" }},
+        {{ "type": "XPathMatch", "path": "//ns1:ConvertedAmount", "value": "85.0" }}
+      ]
     }}
   ],
   "negative_cases": [
     {{
       "name": "Convert with Invalid Currency",
       "operation": "Convert",
-      "payload": {{ "source_currency": "XYZ", "target_currency": "EUR", "amount": 100.0 }}
+      "payload": {{ "source_currency": "XYZ", "target_currency": "EUR", "amount": 100.0 }},
+      "assertions": [
+        {{ "type": "SOAPFault" }},
+        {{ "type": "XPathMatch", "path": "//faultstring", "value": "Invalid source currency" }}
+      ]
     }}
   ]
 }}
