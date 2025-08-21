@@ -6,6 +6,7 @@ from typing import TypedDict, List, Dict, Any
 from langchain_core.prompts import PromptTemplate
 from langchain_community.llms.ollama import Ollama
 from langgraph.graph import StateGraph, END
+from pydantic import BaseModel, ValidationError
 
 from .wsdl_parser import WsdlInfo, parse_wsdl
 from .xml_generator import assemble_full_project_xml
@@ -13,6 +14,23 @@ from .xml_generator import assemble_full_project_xml
 # --- Environment and LLM Configuration ---
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 LLM_MODEL = os.getenv("LLM_MODEL", "llama3")
+
+# --- Pydantic Validation Models for LLM Output ---
+class AssertionDef(BaseModel):
+    type: str
+    value: str | None = None
+    path: str | None = None
+
+class TestCaseDef(BaseModel):
+    name: str
+    operation: str
+    payload: Dict[str, Any]
+    assertions: List[AssertionDef]
+
+class TestDefinition(BaseModel):
+    happy_path: List[TestCaseDef] | None = None
+    negative_cases: List[TestCaseDef] | None = None
+    edge_cases: List[TestCaseDef] | None = None
 
 # --- Graph State Definition ---
 class GraphState(TypedDict):
@@ -158,6 +176,17 @@ def parse_json_node(state: GraphState) -> GraphState:
     except json.JSONDecodeError as e:
         return {"error_message": f"Failed to parse JSON from LLM: {e}. Raw output: {state['generated_test_json']}"}
 
+def validate_json_node(state: GraphState) -> GraphState:
+    """Validates the structure of the parsed JSON using Pydantic models."""
+    print("--- Validating Generated JSON ---")
+    if state.get("error_message"):
+        return
+    try:
+        TestDefinition.model_validate(state["parsed_test_json"])
+        return {}
+    except ValidationError as e:
+        return {"error_message": f"Invalid JSON structure from LLM: {e}"}
+
 def json_to_xml_node(state: GraphState) -> GraphState:
     """Converts the parsed JSON into a full SoapUI project XML."""
     print("--- Converting JSON to SoapUI XML ---")
@@ -181,6 +210,7 @@ workflow.add_node("parse_wsdl", parse_wsdl_node)
 workflow.add_node("generate_json_prompt", generate_json_prompt_node)
 workflow.add_node("call_llm_for_json", call_llm_for_json_node)
 workflow.add_node("parse_json", parse_json_node)
+workflow.add_node("validate_json", validate_json_node)
 workflow.add_node("json_to_xml", json_to_xml_node)
 
 def should_continue(state: GraphState):
@@ -192,7 +222,8 @@ workflow.set_entry_point("parse_wsdl")
 workflow.add_conditional_edges("parse_wsdl", should_continue, {"continue": "generate_json_prompt", "END": END})
 workflow.add_conditional_edges("generate_json_prompt", should_continue, {"continue": "call_llm_for_json", "END": END})
 workflow.add_conditional_edges("call_llm_for_json", should_continue, {"continue": "parse_json", "END": END})
-workflow.add_conditional_edges("parse_json", should_continue, {"continue": "json_to_xml", "END": END})
+workflow.add_conditional_edges("parse_json", should_continue, {"continue": "validate_json", "END": END})
+workflow.add_conditional_edges("validate_json", should_continue, {"continue": "json_to_xml", "END": END})
 workflow.add_edge("json_to_xml", END)
 
 graph_app = workflow.compile()
