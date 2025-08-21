@@ -64,9 +64,9 @@ You are an expert API test case designer. Your task is to generate a JSON object
 1.  Analyze the provided WSDL operations and their input schemas.
 2.  For each test type requested by the user ({test_options}), create a key in the JSON object (e.g., "happy_path").
 3.  For each test type, generate a list of test case objects.
-4.  For each test case, provide:
+4.  For each test case, you MUST provide the following keys:
     - `name`: A descriptive name for the test case (e.g., "Convert USD to EUR").
-    - `operation`: The name of the WSDL operation to test.
+    - `operation`: The name of the WSDL operation to test. This key is mandatory.
     - `payload`: A dictionary of input values for the request body. Create realistic and relevant sample data.
     - `assertions`: A list of assertion objects.
 5.  For each assertion object, provide:
